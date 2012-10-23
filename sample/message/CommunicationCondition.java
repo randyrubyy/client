@@ -1,0 +1,5 @@
+package sample.message;
+
+public enum CommunicationCondition {
+	NoCommunication, NoCenter, FullCommunication, PoliceOffice_Communication, AmbulanceCenter_Communication, FireStation_Communication, AmbulanceCenter_PoliceOffice_Communication, FireCenter_PoliceOffice_Communication, AmbulanceCenter_FireStation_Communication,
+}
