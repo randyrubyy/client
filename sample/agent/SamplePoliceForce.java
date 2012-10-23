@@ -270,6 +270,11 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 		}
 	}
 
+	/**
+	 * 处理清理需求
+	 * @author ruby
+	 * @param message
+	 */
 	protected void processClearPathMessage(ClearPathIsNeededMessage message) {
 		EntityID startId = message.getStartId();
 		StandardEntity startRoad = worldmodel.getEntity(startId);

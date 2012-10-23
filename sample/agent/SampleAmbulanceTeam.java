@@ -273,7 +273,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 			// Am I at a refuge?
 			if (location() instanceof Refuge) {
 				// Unload!
-				Logger.info("Unloading");
+				System.out.println("Unloading");
 				sendUnload(time);
 				sendSaveOrDeadMsg(getSomeoneOnBoard());//远程删除
 				tryDelete(getSomeoneOnBoard()); // 本地删除
@@ -284,7 +284,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 				Path path = getPathToRefuge();
 				// search.breadthFirstSearch(me().getPosition(), refugeIDs);
 				if (path != null) {
-					Logger.info("Moving to refuge");
+					System.out.println("Moving to refuge");
 					sendMove(path);
 					tryDelete(getSomeoneOnBoard()); // 本地删除
 					iAmWorking = false;
@@ -303,7 +303,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 						&& !(location() instanceof Refuge)
 						&& !(location() instanceof Road)) {
 					// Load
-					Logger.info("Loading " + next);
+					System.out.println("Loading " + next);
 					sendLoad(time, next.getID());
 					// TODO :发布远程消息，通知远程删除
 					sendSaveOrDeadMsg(next.getID());//远程删除
@@ -314,7 +314,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 				if (next.getBuriedness() > 0) {
 					// Rescue
 					// ATwork = true;
-					Logger.info("RgetTargetsescueing " + next);
+					System.out.println("RgetTargetsescueing " + next);
 					sendRescue(time, next.getID());
 					// TODO :发布远程消息，通知远程删除
 					iAmWorking = true;
@@ -343,7 +343,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 					// search.breadthFirstSearch(me().getPosition(),
 					// next.getPosition());
 					if (path != null && path.isPassable()) {
-						Logger.info("Moving to target");
+						System.out.println("Moving to target");
 						sendMove(path);
 						iAmWorking = false;
 						return;
@@ -381,7 +381,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 		// searchTarget=path.getDestination();
 		// // (me().getPosition(),unexploredBuildings);
 		// if (path != null) {
-		// Logger.info("Searching buildings");
+		// System.out.println("Searching buildings");
 		// System.out.println("time"+time+"  "+me().getID()+"AT"+"Search newbuildings");
 		// sendMove(path);
 		// return;
@@ -392,7 +392,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 		// Building b=(Building)e;
 		// Path path=search.getPath(me(), b, PathType.LowBlockRepair);
 		// if (path != null) {
-		// Logger.info("Searching buildings");
+		// System.out.println("Searching buildings");
 		// System.out.println("time"+time+"  "+me().getID()+"AT"+"Search oldbuildings");
 		// sendMove(path);
 		// return;
@@ -413,7 +413,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 			// search.breadthFirstSearch(me().getPosition(),
 			// next.getPosition());
 			if (path != null && path.isPassable()) {
-				Logger.info("Moving to target far away..");
+				System.out.println("Moving to target far away..");
 				System.out.println("AT->移动到远端地点 "
 						+ path.getDestination().toString());
 				sendMove(path);
@@ -422,7 +422,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 			}
 		}
 
-		Logger.info("Moving randomly");
+		System.out.println("Moving randomly");
 		List<EntityID> e = getRandomWalk();
 		sendMove(time, e);
 		iAmWorking = false;
