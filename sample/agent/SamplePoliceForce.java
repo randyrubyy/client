@@ -270,11 +270,6 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 		}
 	}
 
-	/**
-	 * 处理清理需求
-	 * @author ruby
-	 * @param message
-	 */
 	protected void processClearPathMessage(ClearPathIsNeededMessage message) {
 		EntityID startId = message.getStartId();
 		StandardEntity startRoad = worldmodel.getEntity(startId);
@@ -438,30 +433,51 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 	@Override
 	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
 
+		
 		for (Command next : heard) {
 			Logger.debug("Heard " + next);
 		}
-		// Am I near a blockade?
+		Path path = null;
 		Blockade target = getTargetBlockade();
-		if (target != null) {
-			Logger.info("Clearing blockade " + target);
-			sendSpeak(time, 1, ("Clearing " + target).getBytes());
-			sendClear(time, target.getID());
-			return;
-		}
-		// Plan a path to a blocked area
-		List<Road> r1 = new ArrayList<Road>();
-		for (EntityID e : getBlockedRoads1()) {
-			r1.add((Road) worldmodel.getEntity(e));
-		}
-		Path path;
-		if(!PFTarget.isEmpty()){
-			path =this.getPathTo(PFTarget.get(0),PathType.Shortest);
-			System.out.print("PF-> Go to msgsender.前往信息发送处\n");
+		
+		if(!PFTarget.isEmpty())
+		{
+/**/		path =this.getPathTo(PFTarget.get(0),PathType.EmptyAndSafe);
+			System.out.print("PF-> Go to msgsender.前往信息发送处  位置："+PFTarget.get(0)+"\n");
+			//if(path.size() < 2 && target == null){
+			//if(this.getID() == PFTarget.get(0)){
+			//	RoadIsClearedMessage message = new RoadIsClearedMessage(PFTarget.get(0));
+			//	this.sendMessage(message, MessagePriority.High);
+			//	System.out.print("PF -> Tell others [C]target\n");
+			//	PFTarget.remove(0);
+			//	System.out.print("PF -> [C]target\n");
+			//}
+			if( this.currentPostion ==this.lastPosition && target!=null)
+				sendClear(time, target.getID());
+			//lastID = this.getID();
+			
+			this.sendMove(path);
+			System.out.print("PF -> [MV] TargetStuck "  +"\n");
 		}
 		else{
+		
+			if (target != null) {
+				Logger.info("Clearing blockade " + target);
+				sendSpeak(time, 1, ("Clearing " + target).getBytes());
+				sendClear(time, target.getID());
+				super.work = true;
+				return;
+			}
+			// Plan a path to a blocked area
+			List<Road> r1 = new ArrayList<Road>();
+			for (EntityID e : getBlockedRoads1()) {
+				r1.add((Road) worldmodel.getEntity(e));
+			}
+			
+
 			path = search.getPath(me(), r1, PathType.EmptyAndSafe);// (me(),
 		}
+		super.act(time, changed, heard);
 		// getBlockedRoads1(),
 		// PathType.Shortest);//
 		// (me().getPosition(),
