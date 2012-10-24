@@ -130,6 +130,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 			int dis = worldmodel.getDistance(me().getID(), location); // 距离被困者的距离
 			// StandardEntityURN myURN = agent.getStandardURN(); //身份和地位。。
 			// TODO: 再高端一点，算回程时间以及救援到达时间。。。以后再说吧
+			// TODO : 确定要死的人就不管了，全都去死吧！
 			// if( deathTime< TIME_TOTAL )
 			if (true) // 先试试看
 			{
@@ -159,7 +160,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 		 */
 		if(targets.isEmpty())
 			return;
-		System.out.println("AT Targets:");
+		System.out.println("AT " + getMeAsHuman().getID().getValue()+" Targets:");
 		for(ATTarget t : targets)
 		{
 			
@@ -269,6 +270,10 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 		// //////////////////////////////////////
 		updateUnexploredBuildings(changed);
 		// Am I transporting a civilian to a refuge?
+		//TODO: 检查被卡信息
+		//checkstuck();
+		//
+		///////////
 		if (someoneOnBoard()) {
 			// Am I at a refuge?
 			if (location() instanceof Refuge) {
@@ -277,6 +282,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 				sendUnload(time);
 				sendSaveOrDeadMsg(getSomeoneOnBoard());//远程删除
 				tryDelete(getSomeoneOnBoard()); // 本地删除
+				
 				iAmWorking = true;
 				return;
 			} else {
@@ -289,6 +295,10 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 					tryDelete(getSomeoneOnBoard()); // 本地删除
 					iAmWorking = false;
 					return;
+				}
+				else
+				{
+					System.err.println(this.getMeAsHuman().getStandardURN() + "->无法获取到Refuge的路径");
 				}
 				// What do I do now? Might as well carry on and see if we can
 				// dig someone else out.
@@ -349,6 +359,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 						return;
 					}
 				} catch (Exception e) {
+					e.printStackTrace();
 				}
 			}
 		}
@@ -409,7 +420,7 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 		if (!targets.isEmpty()) {
 			eliminateTargets();
 			Path path = getPathTo(targets.get(0).getLocId(),
-					PathType.Shortest);
+					PathType.EmptyAndSafe);
 			// search.breadthFirstSearch(me().getPosition(),
 			// next.getPosition());
 			if (path != null && path.isPassable()) {
