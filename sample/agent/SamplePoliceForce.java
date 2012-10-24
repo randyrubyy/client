@@ -70,7 +70,7 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 	public ArrayList<Integer> PFSort = new ArrayList<Integer>();
 	public HashMap<Integer, Integer> clearedBlockade = new HashMap<Integer, Integer>();
 	public HashMap<Integer, Integer> numOfClear = new HashMap<Integer, Integer>();
-	public ArrayList<Integer> PFTarget = new ArrayList<Integer>();
+	public ArrayList<EntityID> PFTarget = new ArrayList<EntityID>();
 
 	public SamplePoliceForce() {
 		super();
@@ -292,8 +292,14 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 		StandardEntity startRoad = worldmodel.getEntity(startId);
 		int dis = worldmodel.getDistance(this.getID(), startId);
 
+		
 		if (!PFTarget.isEmpty() && PFTarget.contains(finishId.getValue())) {
 			return;
+		}
+		else{
+			PFTarget.add(finishId);
+			System.out.print("PF-> Received stuck msg.收到"+finishId+"被堵信息\n");
+			
 		}
 
 	}
@@ -443,7 +449,14 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 		for (EntityID e : getBlockedRoads1()) {
 			r1.add((Road) worldmodel.getEntity(e));
 		}
-		Path path = search.getPath(me(), r1, PathType.EmptyAndSafe);// (me(),
+		Path path;
+		if(!PFTarget.isEmpty()){
+			path =this.getPathTo(PFTarget.get(0),PathType.Shortest);
+			System.out.print("PF-> Go to msgsender.前往信息发送处\n");
+		}
+		else{
+			path = search.getPath(me(), r1, PathType.EmptyAndSafe);// (me(),
+		}
 		// getBlockedRoads1(),
 		// PathType.Shortest);//
 		// (me().getPosition(),

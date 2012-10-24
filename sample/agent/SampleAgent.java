@@ -607,7 +607,8 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 
 	// @Override
 	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
-
+		//TODO: 发现被埋，房屋着火，卡住了
+		
 	}
 
 	@Override
@@ -734,8 +735,21 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 	 * @return The path from current location to nearest refuge.
 	 */
 	public Path getPathToRefuge(PathType pathType) {
-		// TODO: 如果该路径不存在，如何处理
+		// TODO: 如果该路径不存在，如何处理..
+		/**
+		 * @author iorange
+		 * modified to cope with some weird issues...
+		 */
 		Path path = search.getPath(getMeAsHuman(), getAllRefuges(), pathType);
+		if( (path == null)
+				|| (path.isEmpty())
+				|| (!path.isPassable())
+				)
+		{
+			path = search.getPath(getMeAsHuman(), getAllRefuges(), PathType.LowBlockRepair);
+			System.err.println("找不到到Refuge的路，重试一下。。。");
+		}
+			
 		return path;
 	}
 
@@ -1329,4 +1343,5 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 		return target;
 	}
 
+	
 }
