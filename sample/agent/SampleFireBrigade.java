@@ -280,6 +280,7 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 	// ////////////////////////////////////////////////////////////////
 	@Override
 	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
+		
 		int maxWater;
 		updateUnexploredBuildings(changed);
 //		if (location() instanceof Refuge) {
@@ -334,10 +335,12 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 					if (model.getDistance(getID(), next.getID()) <= maxDistance) {
 						Logger.info("Extinguishing " + next);
 						sendExtinguish(time, next.getID(), maxPower);
+						super.work=true;
 						//sendSpeak(time, 1, ("Extinguishing " + next).getBytes());
 						return;
 					}
 				}
+		super.act(time, changed, heard);
 		// Plan a path to a fire
 		List<Building> all1 = getHeatingAndBurningBuildings(true);
 		if (all1 != null) {
