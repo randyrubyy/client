@@ -20,6 +20,7 @@ import rescuecore2.worldmodel.ChangeSet;
 import rescuecore2.worldmodel.EntityID;
 import sample.agent.SampleAgent;
 import sample.message.MessagePriority;
+import sample.message.Type.AgentIsStuckMessage;
 import sample.message.Type.BuildingIsBurningMessage;
 import sample.message.Type.BuildingIsExploredMessage;
 import sample.message.Type.ExtinguishFireTaskMessage;
@@ -44,6 +45,7 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 	private int maxDistance;
 	private int maxPower;
 	private static final int MIN_TOTAL_AREA_TO_CALL_HELP = 150;
+	private static boolean moving2Target = false;
 
 	// private ExtinguishFireTask extinguishFireTask;
 	public SampleFireBrigade() {
@@ -131,24 +133,33 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 	protected void thinkAndAct() {
 	}
 
-	public List<Building> getHeatingAndBurningBuildings(boolean sort) {
+	public List<Building> getHeatingAndBurningBuildings(boolean sort)
+	{
+		// TODO: Sort basing on Fieryness
 		Collection<Building> e = worldmodel.getEntitiesOfType(Building.class,
 				StandardEntityURN.BUILDING);
 		List<Building> result = new ArrayList<Building>();
-		for (Building b : e) {
-			// if (b.isOnFire()) {
+		for (Building b : e)
+		{
+			// if (b.isOnFire())
 			if (b.isFierynessDefined())
-				if (b.getFieryness() > 0 && b.getFieryness() < 4) {
-					if (isInMyPartition(b) || isInNeighborPartition(b)) {
+				if (b.getFieryness() > 0)
+				{
+					if (isInMyPartition(b) || isInNeighborPartition(b))
+					{
 						result.add(b);
-					} else {
-						if (doesNeedHelp(b)) {
+					}
+					else
+					{
+						if (doesNeedHelp(b))
+						{
 							result.add(b);
 						}
 					}
 				}
 		}
-		if (sort) {
+		if (sort)
+		{
 			Collections.sort(result, new DistanceComparator(location(), worldmodel));
 		}
 		return result;
@@ -248,17 +259,18 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 		sendExtinguish(timeStep, building.getID(), maxPower);
 	}
 
-	public boolean doesNeedHelp(Building building) {
-		if (building.isFierynessDefined() && building.isTotalAreaDefined()) {
-
+	public boolean doesNeedHelp(Building building)
+	{
+		// TODO: set MIN_TOTAL_AREA_TO_CALL_HELP | compare distance and Fieryness
+		if (building.isFierynessDefined() && building.isTotalAreaDefined())
+		{
 			if ((building.getFierynessEnum() == Fieryness.INFERNO || worldmodel
-					.getTotalBurningArea(building) > MIN_TOTAL_AREA_TO_CALL_HELP)) {
-
+					.getTotalBurningArea(building) > MIN_TOTAL_AREA_TO_CALL_HELP))
+			{
 				return true;
 			}
 		}
 		return false;
-
 	}
 
 	@Override
@@ -279,32 +291,40 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 	// /////////////////////////////////////////////////////////////////
 	// ////////////////////////////////////////////////////////////////
 	@Override
-	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
+	protected void act(int time, ChangeSet changed, Collection<Command> heard)
+	{
+		// TODO: 保命问题、巡逻问题、补水遇堵问题、、、
+		// Am I in danger?
+		// Explore my partition
+		// Am I stuck on the way to refuge?
+		// ...
 		
 		int maxWater;
 		updateUnexploredBuildings(changed);
-//		if (location() instanceof Refuge) {
-//			if (me().getWater() == maxWater) {
-//				List<EntityID> path1 = null;
-//				path1 = randomWalk();
-//				Logger.info("Moving randomly");
-//				/sendMove(time, path1);
-//				return;
-//			}
-//
-//		}
 
 		for (Command next : heard) {
 			Logger.debug("Heard " + next);
 		}
 		FireBrigade me = me();
+		
+		//Am I stuck?
+		if (moving2Target && this.location() == this.lastPosition)
+		{
+			// this.lastPosition = this.location(); 只在移动、想移动时纪录坐标
+			AgentIsStuckMessage message = new AgentIsStuckMessage(this.location().getID());
+			sendMessage(message, MessagePriority.Medium);
+			System.out.println(me + " is stuck! Send [MSG]");
+		}
+		
 		// Are we currently filling with water?
 		if (me.isWaterDefined() && me.getWater() < maxPower
 				&& location() instanceof Refuge) {
 			Logger.info("Filling with water at " + location());
+			moving2Target = false;
 			sendRest(time);
 			return;
 		}
+		
 		// Are we out of water?
 		if (me.isWaterDefined() && me.getWater() == 0) {
 			// Head for a refuge
@@ -312,9 +332,11 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 			// for(Refuge r1:getAllRefuges())
 			// r.add(r1.getID());
 			// List<EntityID> path = search.getp(me().getPosition(), r);
-			Path path = getPathToRefuge();
+			Path path = getPathToRefuge(PathType.Blockless);
 			if (path != null) {
 				Logger.info("Moving to refuge");
+				moving2Target = true;
+				this.lastPosition = this.location();
 				sendMove(path);
 				return;
 			} else {
@@ -322,11 +344,14 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 				List<EntityID> path1 = null;
 				path1 = getRandomWalk();
 				Logger.info("Moving randomly");
+				moving2Target = false;
+				this.lastPosition = this.location();
 				sendMove(time, path1);
 				return;
 			}
 		}
-		// Find all buildings that are on fire
+		
+		// Find all buildings nearby
 		Collection<Building> all = getObserveBuilding();
 		// Can we extinguish any right now?
 		for (Building next : all)
@@ -334,25 +359,47 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 				if (next.getFieryness() > 0 && next.getFieryness() < 4) {
 					if (model.getDistance(getID(), next.getID()) <= maxDistance) {
 						Logger.info("Extinguishing " + next);
+						moving2Target = false;
 						sendExtinguish(time, next.getID(), maxPower);
-						super.work=true;
 						//sendSpeak(time, 1, ("Extinguishing " + next).getBytes());
 						return;
 					}
 				}
-		super.act(time, changed, heard);
 		// Plan a path to a fire
 		List<Building> all1 = getHeatingAndBurningBuildings(true);
 		if (all1 != null) {
 			for (Building next : all1) {
 				// List<EntityID> path = planPathToFire(next);
-				Path path2 = search.getPath(me(), next, PathType.Shortest);
-				if (path2 != null) {
-					Logger.info("Moving to target");
+				Path path2 = search.getPath(me(), next, PathType.Blockless);
+				// first go Blockless way
+				if (path2 != null)
+				{
 					path2.removeLastEntity();
-					if(path2!=null)
-					   sendMove(path2);
-					return;
+					if (path2 != null)
+					{
+						Logger.info("Moving to target");
+						moving2Target = true;
+						this.lastPosition = this.location();
+						sendMove(path2);
+						return;
+					}
+				}
+				// second go Shortest way (may stuck)
+				else
+				{
+					path2 = search.getPath(me(), next, PathType.Shortest);
+					if (path2 != null)
+					{
+						path2.removeLastEntity();
+						if (path2 != null)
+						{
+							Logger.info("Moving to target");
+							moving2Target = true;
+							this.lastPosition = this.location();
+							sendMove(path2);
+							return;
+						}
+					}
 				}
 			}
 		}
@@ -377,15 +424,12 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 		
 		List<EntityID> path1 = null;
 		Logger.debug("Couldn't plan a path to a fire.");
+		moving2Target = false;
+		this.lastPosition = this.location();
 		path1 = getRandomWalk();
 		Logger.info("Moving randomly");
 		sendMove(time, path1);
 	}
-
-	// @Override
-	// protected EnumSet<StandardEntityURN> getRequestedEntityURNsEnum() {
-	// return EnumSet.of(StandardEntityURN.FIRE_BRIGADE);
-	// }
 
 	private Collection<EntityID> getBurningBuildings1() {
 		Collection<StandardEntity> e = model
