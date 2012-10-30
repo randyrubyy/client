@@ -1,11 +1,15 @@
 package sample.agent;
 
+import holyshit.target.ATTarget;
+import holyshit.target.PFTarget;
+
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import rescuecore2.log.Logger;
@@ -26,15 +30,7 @@ import rescuecore2.worldmodel.ChangeSet;
 import rescuecore2.worldmodel.EntityID;
 import sample.agent.SampleAgent;
 import sample.message.MessagePriority;
-import sample.message.Type.AgentIsStuckMessage;
-import sample.message.Type.AssignFiredBuildingMessage;
-import sample.message.Type.AssignRefugeMessage;
-import sample.message.Type.BuildingIsExploredMessage;
-import sample.message.Type.ClearPathIsNeededMessage;
-import sample.message.Type.Message;
-import sample.message.Type.MessageCount;
-import sample.message.Type.MessageType;
-import sample.message.Type.RoadIsClearedMessage;
+import sample.message.Type.*;
 import sample.object.SampleWorldModel;
 import sample.object.Road.MultiBlockDistanceComparator;
 import sample.object.Road.PathBlockState;
@@ -50,6 +46,7 @@ import sample.utilities.Search.PathType;
  */
 public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 
+	private ArrayList<PFTarget> targets = new ArrayList<PFTarget>();
 	// 清障距离
 	private static final String DISTANCE_KEY = "clear.repair.distance";
 
@@ -70,7 +67,7 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 	public ArrayList<Integer> PFSort = new ArrayList<Integer>();
 	public HashMap<Integer, Integer> clearedBlockade = new HashMap<Integer, Integer>();
 	public HashMap<Integer, Integer> numOfClear = new HashMap<Integer, Integer>();
-	public ArrayList<EntityID> PFTarget = new ArrayList<EntityID>();
+	//public ArrayList<EntityID> PFTarget = new ArrayList<EntityID>();
 
 	public SamplePoliceForce() {
 		super();
@@ -256,6 +253,11 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 
 	protected void processRoadIsClearMessageMessage(RoadIsClearedMessage message) {
 		EntityID roadID = message.getRoadId();
+		if(this.getID()!=message.getSender())
+		{
+			tryDelete(roadID);
+			System.out.print("PF-> 删除"+roadID+"被堵信息\n");
+		}
 
 	}
 
@@ -287,20 +289,28 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 	// 智能体被堵，要及时响应
 	@SuppressWarnings("unused")
 	protected void processAgentIsStuckMessage(AgentIsStuckMessage message) {
-		EntityID startId = message.getLocationId();
+		EntityID startId = this.location().getID();
 		EntityID finishId = message.getLocationId();
 		StandardEntity startRoad = worldmodel.getEntity(startId);
-		int dis = worldmodel.getDistance(this.getID(), startId);
+		int dis = worldmodel.getDistance(this.getID(), finishId);
 
 		
-		if (!PFTarget.isEmpty() && PFTarget.contains(finishId.getValue())) {
-			return;
-		}
-		else{
-			PFTarget.add(finishId);
-			System.out.print("PF-> Received stuck msg.收到"+finishId+"被堵信息\n");
+		//if (!PFTarget.isEmpty() && PFTarget.contains(finishId.getValue())) {
+		//	return;
+		//}
+		//else{
 			
-		}
+			int reputation = 1;
+			float weight = reputation/ (1 + dis / 1000f);
+			PFTarget myTarget = new PFTarget(weight, finishId,finishId);
+			//targets.add(myTarget);
+			tryAddTarget(myTarget);
+			eliminateTargets();
+			printTargets(); // 测试用！！！
+			//PFTarget.add(finishId);
+			System.out.print("PF-> 收到"+finishId+"被堵信息\n");
+			
+	//	}
 
 	}
 
@@ -432,7 +442,9 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 	// ////////////////////////////////////////////////////////
 	@Override
 	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
-
+		latestPosition=lastPosition;
+		lastPosition=this.currentPostion;
+		this.currentPostion=this.location();
 		
 		for (Command next : heard) {
 			Logger.debug("Heard " + next);
@@ -440,10 +452,22 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 		Path path = null;
 		Blockade target = getTargetBlockade();
 		
-		if(!PFTarget.isEmpty())
+		if(!targets.isEmpty()&&!(this.location()instanceof Building))
 		{
-/**/		path =this.getPathTo(PFTarget.get(0),PathType.EmptyAndSafe);
-			System.out.print("PF-> Go to msgsender.前往信息发送处  位置："+PFTarget.get(0)+"\n");
+/**/		path =this.getPathTo(targets.get(0).getHumanId(),PathType.LowBlockRepair);
+			System.out.println(this.getID()+"PF-> Go to msgsender.前往信息发送处  位置："+targets.get(0).getHumanId()+"\n");
+			
+//////////////////////////////////////////////////////////////////////////////////////
+			/**
+			 *  PF 发送接受任务信号 
+			 */
+			//TODO： Agent发消息之后删除之，以免重复
+			
+				System.out.print("PF -> [SEND]我已经接受信息，请其他人删除\n");
+				RoadIsClearedMessage message = new RoadIsClearedMessage(targets.get(0).getHumanId());
+				this.sendMessage(message, MessagePriority.Medium);
+// ///////////////////////////////////////////////////////////////////////////////////////
+
 			//if(path.size() < 2 && target == null){
 			//if(this.getID() == PFTarget.get(0)){
 			//	RoadIsClearedMessage message = new RoadIsClearedMessage(PFTarget.get(0));
@@ -452,10 +476,15 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 			//	PFTarget.remove(0);
 			//	System.out.print("PF -> [C]target\n");
 			//}
-			if( this.currentPostion ==this.lastPosition && target!=null)
+			if( (this.location() ==this.lastPosition||this.location()==this.latestPosition )&& target!=null)
+			{
+				
 				sendClear(time, target.getID());
+				return;
+			}
 			//lastID = this.getID();
-			
+			latestPosition=lastPosition;
+			lastPosition=this.location();
 			this.sendMove(path);
 			System.out.print("PF -> [MV] TargetStuck "  +"\n");
 		}
@@ -478,10 +507,12 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 			path = search.getPath(me(), r1, PathType.EmptyAndSafe);// (me(),
 		}
 		super.act(time, changed, heard);
+		
 		// getBlockedRoads1(),
 		// PathType.Shortest);//
 		// (me().getPosition(),
 		// getBlockedRoads());
+		
 		if (path != null) {
 			try {
 				Logger.info("Moving to target");
@@ -501,7 +532,8 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 		}
 		Logger.debug("Couldn't plan a path to a blocked road");
 		Logger.info("Moving randomly");
-		sendMove(time, getRandomWalk());
+		//sendMove(time, getRandomWalk());
+		sendMove(getPathToPartition());
 	}
 
 	private List<EntityID> getBlockedRoads1() {
@@ -579,4 +611,72 @@ public class SamplePoliceForce extends SampleAgent<PoliceForce> {
 		}
 		return (int) best;
 	}
+	
+
+	public void tryDelete(EntityID humanID) {
+		/**
+		 * @author iorange 如果已经开始）
+		 * 
+		 */
+		for (Iterator<PFTarget> it = targets.iterator(); it.hasNext();) {
+			PFTarget t = (PFTarget) it.next();
+			if (humanID.equals(t.getHumanId())) {
+				//System.out.println("AT try delete " + targets.size());
+				it.remove(); // 这样删除元素不报错
+				//System.out.println("AT delete result " + targets.size());
+			}
+		}
+	}
+	public void tryAddTarget(PFTarget target) {
+		/**
+		 * @author iorange 加入targets列表函数，如果检测到已有相同的humanID那么就更新
+		 * 
+		 */
+
+		tryDelete(target.getHumanId()); // 寻找相同的，找到先删了
+		targets.add(target); // 然后加入;
+	}
+	
+	public void eliminateTargets()
+	/**
+	 * @author iorange 筛选信息，剔除不必要的或者超过限制的PFTarget. 附带筛选结果
+	 */
+	{
+		Collections.sort(targets);
+		int size = targets.size();
+		if (size > 11) {
+			// 剔了！
+			for (int i = size - 1; i >= 11; i--) {
+				PFTarget ass = targets.remove(i);
+				System.out.println("AT->删除过多的任务" + ass.toString());
+			}
+		}
+		for (Iterator<PFTarget> it = targets.iterator(); it.hasNext();) {
+			PFTarget t = (PFTarget) it.next();
+			/*
+			if (humanID.equals(t.getHumanId())) {
+				System.out.println("AT try delete " + targets.size());
+				it.remove(); // 这样删除元素不报错
+				System.out.println("AT delete result " + targets.size());
+			}
+			*/
+			
+		}
+	}
+	
+	private void printTargets()
+	{
+		/**
+		 * 测试用程序：显示AT 任务列表
+		 */
+		if(targets.isEmpty())
+			return;
+		System.out.println("PF " + getMeAsHuman().getID().getValue()+" Targets:");
+		for(PFTarget t : targets)
+		{
+			
+			System.out.println("wt=" + t.getWeight() + "    humanID=" + t.getHumanId().getValue());
+		}
+	}
 }
+

@@ -267,6 +267,9 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 	@Override
 	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
 
+		latestPosition=lastPosition;
+		lastPosition=this.currentPostion;
+		this.currentPostion=this.location();
 		// //////////////////////////////////////
 		updateUnexploredBuildings(changed);
 		// Am I transporting a civilian to a refuge?
@@ -291,6 +294,16 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 				// search.breadthFirstSearch(me().getPosition(), refugeIDs);
 				if (path != null) {
 					System.out.println("Moving to refuge");
+					if (!iAmWorking&&this.isStuck(getMeAsHuman(), true)
+							&&this.location()==this.lastPosition )// this.location().equals(this.positionHistory))
+							{
+								System.out.print(this.getMeAsHuman().getStandardURN()
+										+ "-> 我在发送被堵信息  位置 :" + this.getID() + "\n");
+								// System.out.print("AT -> [SEND]i'M sTUCK~!!! 发送被堵信息\n");
+								AgentIsStuckMessage message = new AgentIsStuckMessage(this
+										.location().getID());
+								this.sendMessage(message, MessagePriority.Medium);
+							}
 					sendMove(path);
 					tryDelete(getSomeoneOnBoard()); // 本地删除
 					iAmWorking = false;
@@ -305,6 +318,23 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 				Logger.debug("Failed to plan path to refuge");
 			}
 		}
+		
+		//////////////////////////////////////////////////////////////////////////////////////
+		/**
+		 *  AT 发送求救信号 
+		 */
+		//TODO： Agent发消息之后删除之，以免重复
+		//System.out.print(this.isStuck(getMeAsHuman(), true) + "if"+ lastPosition + "AT -> 我在找 发送被堵信息   :" + this.location()+ "\n");
+	/*	if (this.isStuck(getMeAsHuman(), true)
+				&& this.location() == lastPosition)// this.location().equals(this.positionHistory))
+		{
+			System.out.print("AT -> [SEND]i'M sTUCK~!!! 发送被堵信息\n");
+			AgentIsStuckMessage message = new AgentIsStuckMessage(this
+					.location().getID());
+			this.sendMessage(message, MessagePriority.Medium);
+		}
+		lastPosition = this.location();*/
+		// ///////////////////////////////////////////////////////////////////////////////////////
 
 		for (Human next : getTargets()) {
 			if (next.getPosition().equals(location().getID())) {
@@ -329,9 +359,12 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 					sendRescue(time, next.getID());
 					// TODO :发布远程消息，通知远程删除
 					iAmWorking = true;
+					//super.work = true;
+					
 					tryDelete(next.getID()); // 本地删除
 					return;
 				}
+				//super.act(time, changed, heard);
 			}
 
 			else {
@@ -353,9 +386,34 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 					// next.getPosition());
 					if (path != null && path.isPassable()) {
 						System.out.println("Moving to target");
+						if (!iAmWorking&&this.isStuck(getMeAsHuman(), true)
+								&&this.location()==this.lastPosition )// this.location().equals(this.positionHistory))
+								{
+									System.out.print(this.getMeAsHuman().getStandardURN()
+											+ "-> 我在发送被堵信息  位置 :" + this.getID() + "\n");
+									// System.out.print("AT -> [SEND]i'M sTUCK~!!! 发送被堵信息\n");
+									AgentIsStuckMessage message = new AgentIsStuckMessage(this
+											.location().getID());
+									this.sendMessage(message, MessagePriority.Medium);
+								}//super.act(time, changed, heard);
 						sendMove(path);
 						iAmWorking = false;
 						return;
+					}
+					/**
+					 * @author Dangyifei
+					 * 智能体被堵发送信息
+					 */
+					System.out.print(this.getMeAsHuman().getStandardURN()+""+this.location()+"位置 :"+ this.lastPosition + "\n");
+					if (!iAmWorking&&this.isStuck(getMeAsHuman(), true)
+					&&this.location()==this.lastPosition )// this.location().equals(this.positionHistory))
+					{
+						System.out.print(this.getMeAsHuman().getStandardURN()
+								+ "-> 我在发送被堵信息  位置 :" + this.getID() + "\n");
+						// System.out.print("AT -> [SEND]i'M sTUCK~!!! 发送被堵信息\n");
+						AgentIsStuckMessage message = new AgentIsStuckMessage(this
+								.location().getID());
+						this.sendMessage(message, MessagePriority.Medium);
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -379,10 +437,22 @@ public class SampleAmbulanceTeam extends SampleAgent<AmbulanceTeam> {
 						+ path.getDestination().toString());
 				sendMove(path);
 				iAmWorking = false;
+				//super.act(time, changed, heard);
 				return;
 			}
+			if (!iAmWorking&&this.isStuck(getMeAsHuman(), true)
+					&&this.location()==this.lastPosition )// this.location().equals(this.positionHistory))
+					{
+						System.out.print(this.getMeAsHuman().getStandardURN()
+								+ "-> 我在发送被堵信息  位置 :" + this.getID() + "\n");
+						// System.out.print("AT -> [SEND]i'M sTUCK~!!! 发送被堵信息\n");
+						AgentIsStuckMessage message = new AgentIsStuckMessage(this
+								.location().getID());
+						this.sendMessage(message, MessagePriority.Medium);
+					}
 		}
 
+		//super.act(time, changed, heard);
 		System.out.println("Moving randomly");
 		List<EntityID> e = getRandomWalk();
 		sendMove(time, e);
