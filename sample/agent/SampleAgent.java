@@ -167,9 +167,9 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 	}
 
 	// 记录上上周期，上一周期，当前周期智能体位置
-	protected Area latestPosition;
-	protected Area lastPosition;
-	protected Area currentPostion;
+	protected StandardEntity latestPosition;
+	protected StandardEntity lastPosition;
+	protected StandardEntity currentPostion;
 
 	// 重复次数
 	int sum = 0;
@@ -277,6 +277,9 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 				seen.add(current);
 				List<StandardEntity> neighbours = new ArrayList<StandardEntity>(
 						search.findNeighbours(current));
+				
+				//List<StandardEntity> neighbours = getAssignedPartitionMap().
+				
 				Collections.shuffle(neighbours, random);
 				boolean found = false;
 				for (StandardEntity next : neighbours) {
@@ -286,6 +289,8 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 					if (next instanceof Building && i < RANDOM_WALK_LENGTH - 1) {
 						continue;
 					}
+					
+					
 					current = next;
 					found = true;
 					break;
@@ -628,22 +633,28 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 	// @Override
 	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
 
-	
+		
 		/**
 		 * @author Dangyifei
 		 * 智能体被堵发送信息
 		 */
-	
+		System.out.print(this.getMeAsHuman().getStandardURN()+""+this.location()+"位置 :"+ this.lastPosition + "\n");
 		if (!work&&this.isStuck(getMeAsHuman(), true)
-				&& (this.currentPostion == this.lastPosition || this.currentPostion == this.latestPosition))// this.location().equals(this.positionHistory))
+		&&this.location()==this.lastPosition )// this.location().equals(this.positionHistory))
 		{
 			System.out.print(this.getMeAsHuman().getStandardURN()
 					+ "-> 我在发送被堵信息  位置 :" + this.getID() + "\n");
 			// System.out.print("AT -> [SEND]i'M sTUCK~!!! 发送被堵信息\n");
 			AgentIsStuckMessage message = new AgentIsStuckMessage(this
-					.getID());
+					.location().getID());
 			this.sendMessage(message, MessagePriority.Medium);
 		}
+		//this.lastPosition = this.location();
+		
+		Area testArea = (Area)getMeAsHuman().getPosition(getModel());
+		
+		System.out.println(testArea);
+		
 	if(this.getMeAsHuman().getBuriedness()>0){
 		System.out.print(this.getMeAsHuman().getStandardURN()
 				+ "-> 我在发送自己被埋信息  位置 :" + this.getID() + "\n");
@@ -733,6 +744,7 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 
 	public List<EntityInPartition> getAssignedPartitions() {
 		if (worldmodel == null) {
+			System.err.println("Empty worldmodel");
 			return null;
 		} else {
 			return getAssignedPartitionMap().getPartitions();
@@ -741,6 +753,7 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 
 	public PartitionMap getAssignedPartitionMap() {
 		if (worldmodel == null) {
+			System.err.println("Empty worldmodel");
 			return null;
 		} else {
 			return worldmodel.getPartitionModel().getAssignedPartitions(getID());
@@ -785,7 +798,20 @@ public abstract class SampleAgent<E extends StandardEntity> extends
 	 */
 	public Path getPathToRefuge(PathType pathType) {
 		// TODO: 如果该路径不存在，如何处理
+		/**
+		 * @author iorange
+		 * modified to cope with some weird issues...
+		 */
 		Path path = search.getPath(getMeAsHuman(), getAllRefuges(), pathType);
+		if( (path == null)
+				|| (path.isEmpty())
+				|| (!path.isPassable())
+				)
+		{
+			path = search.getPath(getMeAsHuman(), getAllRefuges(), PathType.LowBlockRepair);
+			System.err.println("找不到到Refuge的路，重试一下。。。");
+		}
+			
 		return path;
 	}
 
