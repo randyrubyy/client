@@ -280,8 +280,11 @@ public class SampleFireBrigade extends SampleAgent<FireBrigade> {
 	// ////////////////////////////////////////////////////////////////
 	@Override
 	protected void act(int time, ChangeSet changed, Collection<Command> heard) {
-		
+		latestPosition=lastPosition;
+		lastPosition=this.currentPostion;
+		this.currentPostion=this.location();
 		int maxWater;
+		super.work=false;
 		updateUnexploredBuildings(changed);
 //		if (location() instanceof Refuge) {
 //			if (me().getWater() == maxWater) {
