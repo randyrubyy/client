@@ -1,5 +1,5 @@
 # RoboCup client
-Client program for roboCup_rescue_project
+Client program for RoboCup_rescue_project
 ## Dependency
 * Eclipse
 * Java
